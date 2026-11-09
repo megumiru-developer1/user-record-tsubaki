@@ -1,0 +1,224 @@
+<style>
+
+  body {
+    font-family: sans-serif;
+    margin: 20px;
+    background-color: #f8f9fa;
+  }
+  
+  .container {
+    padding: 0 20px;
+  }
+  
+  /* 画面遷移ボタンのスタイル */
+  .header button {
+    padding: 8px 16px;
+    border: 1px solid #ccc;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .header button:hover {
+    background-color: #e9ecef;
+  }
+  
+  .header button.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+  }
+  
+  .hidden {
+    display: none !important;
+  }
+  
+  /* 日曜日の背景色 */
+  .sunday {
+    background-color: #ffebee !important;
+  }
+  
+  /* 土曜日の背景色 */
+  .saturday {
+    background-color: #e3f2fd !important;
+  }
+  
+  /* 操作ボタンのスタイル */
+  .edit-button,
+  .delete-button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 11px;
+    margin: 0 2px;
+    transition: all 0.2s ease;
+  }
+  
+  .edit-button {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .edit-button:hover {
+    background-color: #0056b3;
+  }
+  
+  .delete-button {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .delete-button:hover {
+    background-color: #c82333;
+  }
+  
+  .table-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+
+  .tab-button {
+      padding: 10px 20px;
+      border: none;
+      
+      background-color: #cee6ff;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+  }
+
+  /* テーブルのスタイル */
+  table {
+    font-size: 12px;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  th, td {
+    border: 1px solid #dee2e6;
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: middle;
+  }
+  
+  thead {
+    background-color: #f8f9fa;
+  }
+  
+  thead th {
+    font-weight: bold;
+    color: #495057;
+    background-color: #e9ecef;
+  }
+  
+  tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+  
+  /* ローディング画面のスタイル */
+  #loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.1); /* Semi-transparent black */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* 最前面に表示 */
+  }
+  
+  #global-loading-message {
+    padding: 20px;
+    border-radius: 5px;
+    color: black;
+    font-weight: bold;
+  }
+  
+  /* 指定要素用のローディングスタイル */
+  .element-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+  }
+  
+  .element-loading-message {
+    padding: 15px 25px;
+    border-radius: 5px;
+    color: #333;
+    font-weight: bold;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border: none;
+    transition: all 0.3s ease;
+  }
+
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+  }
+
+  .btn-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #545b62 100%);
+    border: none;
+    transition: all 0.3s ease;
+  }
+
+  .btn-secondary:hover {
+    background: linear-gradient(135deg, #545b62 0%, #495057 100%);
+  }
+
+  .btn-edit {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+    border: none;
+    transition: all 0.3s ease;
+  }
+
+  .btn-edit:hover {
+    background: linear-gradient(135deg, #1e7e34 0%, #155724 100%);
+  }
+  
+  .btn-outline {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+    border: none;
+    transition: all 0.3s ease;
+  }
+
+  .btn-outline:hover {
+    background: linear-gradient(135deg, #1e7e34 0%, #155724 100%);
+  }
+
+  .btn-delete {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border: none;
+    transition: all 0.3s ease;
+  }
+
+  .btn-delete:hover {
+    background: linear-gradient(135deg, #c82333 0%, #a71e2a 100%);
+  }
+
+  .btn {
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+</style>

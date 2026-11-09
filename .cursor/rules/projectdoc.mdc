@@ -1,0 +1,252 @@
+---
+alwaysApply: true
+---
+
+## 概要
+- 当アプリはGoogleスプレッドシートのメニューから起動し、モーダルダイアログで操作するアプリケーションです。メニューのアイテムごとに機能が分かれています。当アプリはGASで動作しますが、claspを用いてローカルで開発しています。
+
+## 主要な技術
+- webpack
+- Google Apps Script
+- TypeScript
+- clasp
+
+## 各ディレクトリ、ファイルの役割
+
+### `src/client`
+- **概要**: クライアントサイドで必要なファイルを管理するフォルダです。スプレッドシートから起動されるモーダルダイアログのUIを実装します。
+
+### `src/client/{機能名}/`
+- **概要**:対象の機能に必要なアセット(html、css、js)を格納します。 
+           
+- **ファイル構成**:
+  - `index.html`: 対象の機能で表示されるモーダルダイアログのHTMLテンプレート。
+  - `main.ts`: 対象の機能で実装するTypeScriptファイル。ビルド時に`main.js.html`に変換される。
+  - `main.js.html`: TypeScriptからビルドされたJavaScriptコード。`<script>`タグでラップされ、GASの`include`関数で対象の`index.html`に埋め込まれる。
+  - `css.css.html`: CSSスタイルシート。`<style>`タグでラップされ、GASの`include`関数で対象の`index.html`に埋め込まれる。
+
+### `src/client/common/`
+- **概要**: 複数の機能で共通利用するコンポーネント・ユーティリティです。
+
+#### `MultiSelectDropdown.ts`
+- **概要**: 検索機能付きの複数選択カスタムドロップダウン。選択アイテムはタグ表示され、各タグの×で削除可能。
+- **主要機能**:
+  - 複数オプションの選択（チェックボックス）
+  - 検索によるフィルタリング
+  - 選択アイテムのタグ表示と×での削除
+  - クリックアウトサイドで自動クローズ
+- **使用方法**:
+  ```typescript
+  import { MultiSelectDropdown } from '../common/common';
+
+  const dropdown = new MultiSelectDropdown('#multiselect-element', [
+    { key: '1', value: 'やくそう' },
+    { key: '2', value: 'どくけし' }
+  ], {
+    selectedKeys: ['1'],
+    label: '使用するアイテムを選択',
+    placeholder: '選択してください',
+    searchPlaceholder: '検索...',
+    width: '300px'
+  });
+
+  // 選択されたキー一覧を取得
+  const keys = dropdown.getSelectedKeys();
+  // 選択された表示値一覧を取得
+  const values = dropdown.getSelectedValues();
+  // 変更イベント
+  element.addEventListener('change', () => { /* keys = dropdown.getSelectedKeys(); */ });
+  ```
+- **主要メソッド**:
+  - `getSelectedKeys()`: 選択中のキー配列
+  - `getSelectedValues()`: 選択中の表示値配列
+  - `setSelectedKeys(keys)`: 選択を設定
+  - `setOptions(options)`: オプション一覧を更新
+  - `destroy()`: イベント解除
+
+### `src/server`
+- **概要**: サーバーサイド（GAS側）で実行されるファイルを管理するフォルダです。
+
+### `src/server/api/`
+- **概要**: クライアントから呼ばれるサーバーサイドのAPI関数を定義するファイルです。
+- **命名規則**: `*API.ts`
+
+### `src/types/api/`
+- **概要**: クライアント（`src/client`）とサーバー（`src/server/api`）の間で受け渡すデータ構造（`interface` / `type`）を定義する共通のAPI契約フォルダです。
+
+### `src/types/api/{機能名}/`
+- **概要**: 機能単位（例: `support-manage`）でAPI用DTOを管理します。
+- **ファイル構成**:
+  - `index.ts`: その機能で利用するDTOの公開入口（再エクスポート）。
+  - `*Dto.ts`: 個別DTO定義ファイル（例: `supportRecordDto.ts`）。
+- **命名規則**:
+  - ファイル名は `camelCase + Dto.ts`（例: `initializeByDateDto.ts`）
+  - 型名は `PascalCase + Dto`（例: `InitializeByDateDto`）
+- **運用ルール**:
+  - クライアント・サーバー間で送受信する型は `src/types/api/{機能名}/` に定義し、片側のみで重複定義しない。
+  - 新しいDTOを追加したら、必ず同階層の `index.ts` から `export type` する。
+  - `google.script.run` の制約を考慮し、DTOにはシリアライズ可能な値のみを持たせる（`Date` や `Function` は直接受け渡さない）。
+
+#### API関数の実装方法
+
+**1. 関数の定義**
+- `global.関数名` の形式で関数を定義します。
+- 関数名はキャメルケースで命名します（例: `saveSupportRecord`）。
+- 関数は `*API.ts` ファイルに定義します。
+- 引数・戻り値の型は `src/types/api/{機能名}/` のDTOを `import type` して利用します。
+
+**2. クライアントからの呼び出し**
+- クライアント側では `ws-framework/client` の `callAPI` 関数を利用してAPIを呼び出します。
+- `callAPI` はPromiseを返すため、`async/await`で処理できます。
+- `google.script.run` 経由で通信するため、引数にはシリアライズ可能な値のみを渡してください。
+  - `Date` 型は文字列（例: `yyyy-MM-dd`）に変換して渡す
+  - `Function` 型、`Form` 以外のDOM要素は渡さない
+  - 参考: https://developers.google.com/apps-script/guides/html/reference/run#parameters
+
+**3. 実装例（サーバー側）**
+```typescript
+// src/server/api/SupportRecordAPI.ts
+import { Config } from "../Config";
+import { SupportRecordRepository } from "../data-access/repositories/SupportRecordRepository";
+import { SupportRecord, SupportRecordPrimaryKey } from "../data-access/models/SupportRecord";
+import { formatDate, createUserErrorMessage } from "ws-framework/utility";
+import type { SupportRecordDto } from "../../types/api/support-manage";
+
+global.saveSupportRecord = function(data: SupportRecordDto): SupportRecordDto {
+    try {
+        if (!data.userNumber || !data.date) {
+            throw new Error(createUserErrorMessage("利用者番号と日付は必須です"));
+        }
+
+        const systemFileId = Config.getInstance().get("systemFileId");
+        const supportRepository = new SupportRecordRepository(systemFileId);
+        const date = parseDateString(data.date);
+        const key = new SupportRecordPrimaryKey(data.userNumber, date);
+        const existing = supportRepository.getByPrimaryKey(key);
+
+        const model = new SupportRecord(
+            data.userNumber,
+            date,
+            data.sharedMatters ?? "",
+            data.todaysCondition ?? "",
+            data.remarks1 ?? "",
+            data.remarks2 ?? "",
+            data.supportContent ?? ""
+        );
+
+        if (existing) {
+            supportRepository.update(key, model);
+        } else {
+            supportRepository.insert([model]);
+        }
+
+        return {
+            userNumber: model.userNumber,
+            date: formatDate(model.date, Session.getScriptTimeZone()),
+            sharedMatters: model.sharedMatters,
+            todaysCondition: model.todaysCondition,
+            remarks1: model.remarks1,
+            remarks2: model.remarks2,
+            supportContent: model.supportContent
+        };
+    } catch (error) {
+        console.error("支援記録保存エラー:", error);
+        throw error;
+    }
+};
+```
+
+**4. 呼び出し例（クライアント側）**
+```typescript
+// src/client/support-manage/main.ts
+import { callAPI } from "ws-framework/client";
+import type { InitializeByDateDto, SupportRecordDto } from "../../types/api/support-manage";
+
+const initializeDataList = await callAPI<InitializeByDateDto[]>("getSupportRecordListByDates", ["2026-04-24"], store);
+
+const payload: SupportRecordDto = {
+    userNumber: "001",
+    date: "2026-04-24",
+    sharedMatters: "",
+    todaysCondition: "",
+    remarks1: "",
+    remarks2: "",
+    supportContent: "本日の支援内容"
+};
+const saved = await callAPI<SupportRecordDto>("saveSupportRecord", payload);
+```
+
+**5. エラーハンドリング**
+- ユーザー向けに表示したいエラーは `createUserErrorMessage` を利用して生成してください。
+- 想定外のシステムエラーはログ出力後に再スローし、呼び出し元で共通ハンドリングします。
+
+```typescript
+import { createUserErrorMessage } from "ws-framework/utility";
+
+if (!data.userNumber) {
+    throw new Error(createUserErrorMessage("利用者番号は必須です"));
+}
+```
+
+### `src/server/data-access/`
+- **概要**: データベースアクセス層のロジックを管理するフォルダです。
+- **models/**: データ構造定義。自作パッケージ`ws-framework`の`ModelBase`を継承して実装
+- **repositories/**: CRUD操作実装。自作パッケージ`ws-framework`の`RepositoryBase`、`RepositoryBaseHasPeriod`を継承して実装
+- ws-frameworkの概要は下記を参照してください。※アクセスできない場合はコラボレータの追加を管理者に依頼してください。
+  https://github.com/megumiru-developer1/ws-framework
+
+
+
+### `src/server/service/`
+- **概要**: ビジネスロジック・共通サービスを管理するフォルダです。APIファイルのロジックが肥大化した場合、こちらに分離して実装します。
+
+### `src/server/types.ts`
+- **概要**: アプリケーション全体で使用される定数と型定義を管理するファイルです。定数オブジェクトとそれに対応する型定義をペアで定義しています。**静的なプルダウンの選択肢はこのファイルで定義してください。** 
+
+## 開発環境構築
+
+### 1. 依存関係のインストール
+```bash
+npm install
+```
+
+### 2. claspのセットアップ
+```bash
+# claspのインストール（初回のみ）
+npm install -g @google/clasp
+
+# Googleアカウントでログイン
+clasp login
+
+```
+### 3. clasp.jsonの設定
+ルート直下にある「.clasp.json_template」を「.clasp.json」に改名し、scriptIdにGASプロジェクトのスクリプトIDを設定してください。
+例: {"scriptId":"YOUR_SCRIPT_ID","rootDir":".\\dist"}
+
+
+### 4. スクリプトプロパティの設定
+Google Apps Scriptのエディタで、以下のスクリプトプロパティを設定してください：
+- `USER_MASTER_FILE_ID`: 利用者マスターのスプレッドシートID
+- `SELF_HEALTH_OBSERVATION_FILE_ID`: 自己健康観察データのスプレッドシートID
+- `OFF_SITE_WORK_RECORD_FILE_ID`: 施設外就労記録テーブルのスプレッドシートID
+
+
+## デプロイ方法
+
+### 1. ビルドの実行
+```bash
+npm run build
+```
+- `dist/`フォルダにビルド済みファイルが生成されます
+- `appsscript.json`が自動的に`dist/`にコピーされます
+
+### 2. Google Apps Scriptへのアップロード
+`dist/`フォルダの内容をclaspを用いてGoogle Apps Scriptプロジェクトにアップロードします。
+
+```bash
+clasp push
+```
+
+## 注意事項
+- スプレッドシートのIDなどの設定値は、ハードコーディングせずにGASのスクリプトプロパティで設定してください。
+- 設定値の取得は`src/server/Config.ts`の`Config.getInstance().get('設定キー')`を使用してください。

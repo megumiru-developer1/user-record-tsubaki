@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <base target="_top">
+    <?!= include('client/common/common.css'); ?>
+    <?!= include('client/feature1/styles.css'); ?>
+    <meta name="charset" content="UTF-8">
+  </head>
+  <body>
+    <?!= include('client/common/html/loading.html'); ?>
+    <div class="container">
+
+      <!-- 一覧画面 -->
+      <div id="list-view-container">
+        <div class="main-content">
+          <div class="header" id="yearMonthFilter">
+            <label for="yearSelect">年:</label>
+            <select id="yearSelect">
+              <!-- 年はJavaScriptで動的に生成 -->
+            </select>
+            <label for="monthSelect">月:</label>
+            <select id="monthSelect">
+              <!-- 月はJavaScriptで動的に生成 -->
+            </select>
+            <button id="show-absence-list-button">表示</button>
+          </div>
+          <div class="table-scroll">
+            <table id="absenceHandlingTable" class="absence-handling-table">
+              <thead>
+                <!-- TableFoundationが自動的にヘッダーを生成します -->
+              </thead>
+              <tbody>
+                <!-- TableFoundationが自動的にデータを生成します -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <?!= include('client/common/common.js'); ?>
+    <?!= include('client/absence-handling/main.js'); ?>
+  </body>
+</html>

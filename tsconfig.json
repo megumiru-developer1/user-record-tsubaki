@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "sourceMap": true,
+    "target": "ES2020",
+    "module": "Node16",
+    "declaration": false,
+    "moduleResolution": "Node16",
+    "skipLibCheck": true,
+    "types": ["google-apps-script", "node"],
+  },
+  "include": ["src/server/main.ts", "src/server/**/*.d.ts"]
+}
