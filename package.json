@@ -11,7 +11,10 @@
     "webpack-cli": "^6.0.1"
   },
   "scripts": {
-    "build": "rimraf dist && npm run build:client && webpack --config webpack.config.js && node copyAsset.js",
-    "build:client": "webpack --config webpack.client.config.js"
+    "build": "rimraf dist && webpack --config webpack.config.js && node copyAsset.js"
+  },
+  "dependencies": {
+    "common-data-access-tsubaki-type-a": "github:megumiru-developer1/common-data-access-tsubaki-type-a#v1.0.2",
+    "ws-framework": "github:megumiru-developer1/ws-framework#v9.1.5"
   }
 }
