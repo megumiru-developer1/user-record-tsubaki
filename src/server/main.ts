@@ -11,10 +11,7 @@ const TIMEOUT_SECOND = 5 * 60;
 
 global.test = function() {
   const userRecord = new UserRecord(SpreadsheetApp.getActiveSpreadsheet().getId());
-  const userSheetUrlMaps = userRecord.generateUserSheetUrl();
-  const dateCellUrlMaps = userRecord.generateDateCellUrl();
-  Logger.log(userSheetUrlMaps);
-  Logger.log(dateCellUrlMaps);
+  userRecord.setValue("001", new Date(), "業務内容", "テスト");
 }
 
 // 利用者シート作成 ⇒「作成」ボタンを押した時の処理

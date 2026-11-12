@@ -1,9 +1,12 @@
 import { Domains } from 'ws-framework/server';
 import { Store } from "common-data-access-tsubaki-type-a/types";
+import { formatDate } from 'ws-framework/utility';
 
 const TEMPLATE_SHEET_NAME = "XXX氏名";
 const NOT_CREATE_SHEET_NAMES_RANGE_NAMES = '未作成シートリスト';
 const DATE_CELL_MAP_RANGE_NAME = "日付_セル番地マップ";
+
+type InputItemName = "業務内容" | "週評価" | "月評価" | "業務の進捗" | "気付き工夫等" | "進捗確認URL" | "特記事項※あれば" | "共有事項／発生課題" | "本日の様子" | "奨励点" | "指導点" | "会議種類" | "メンバー" | "内容" | "（参考URL）";
 
 // 利用者番号 セル番地
 const USER_ID_RANGE = "A2";
@@ -50,6 +53,7 @@ interface IUserSheetName {
 interface IUserSheet {
   get userNumber(): string;
   get userName(): string;
+  get sheet(): GoogleAppsScript.Spreadsheet.Sheet;
   get gid(): number;
 }
 
@@ -94,18 +98,24 @@ export class UserRecordSheetName implements IUserSheetName {
  * 利用者シートを管理するクラス
  */
 export class UserRecordSheet implements IUserSheet {
-  constructor(private sheet: GoogleAppsScript.Spreadsheet.Sheet) {}
+  constructor(private _sheet: GoogleAppsScript.Spreadsheet.Sheet) {}
+
+
+  // シート
+  get sheet(): GoogleAppsScript.Spreadsheet.Sheet {
+    return this._sheet;
+  }
 
   // 利用者番号
   get userNumber(): string {
-    const sheetName = this.sheet.getName();
+    const sheetName = this._sheet.getName();
     const userSheetNameParser = new UserRecordSheetName(sheetName);
     return userSheetNameParser.userNumber;
   }
 
   // 氏名
   get userName(): string {
-    const sheetName = this.sheet.getName();
+    const sheetName = this._sheet.getName();
     const userSheetNameParser = new UserRecordSheetName(sheetName);
     return userSheetNameParser.userName;
   }
@@ -119,6 +129,18 @@ export class UserRecordSheet implements IUserSheet {
 const CONFIG_YEAR_RANGE_NAME = "設定_年";
 const CONFIG_MONTH_RANGE_NAME = "設定_月";
 const CONFIG_STORE_RANGE_NAME = "設定_店舗";
+const DATE_RANGE_NAME = "日付欄範囲";
+const INPUT_HEADER_RANGE_NAME = "入力欄ヘッダー範囲";
+
+type InputItemRowMap = {
+    itemName: InputItemName;
+    row: number;
+}
+
+type DateColumnMap = {
+    date: string;
+    column: number;
+}
 
 export class UserRecord{
   private spreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet;
@@ -126,7 +148,8 @@ export class UserRecord{
   private year: number | null;
   private month: number | null;
   private store: Store | null;
-
+  private inputItemRowMaps: InputItemRowMap[];
+  private dateColumnMaps: DateColumnMap[];
   createUserSheet(userNumber: string, userName: string) {
     const sheetCreator = this.buildSheetCreator();
     sheetCreator.createSheet({ userNumber }, userNumber + userName);
@@ -137,6 +160,41 @@ export class UserRecord{
     this.year = this.spreadSheet.getRangeByName(CONFIG_YEAR_RANGE_NAME)?.getValue() as number;
     this.month = this.spreadSheet.getRangeByName(CONFIG_MONTH_RANGE_NAME)?.getValue() as number;
     this.store = this.spreadSheet.getRangeByName(CONFIG_STORE_RANGE_NAME)?.getValue() as Store;
+    const dateRange = this.spreadSheet.getRangeByName(DATE_RANGE_NAME)?.getValue() as string;
+    const inputHeaderRange = this.spreadSheet.getRangeByName(INPUT_HEADER_RANGE_NAME)?.getValue() as string;
+
+    if (!dateRange) {
+      throw new Error("日付欄範囲が見つかりません。");
+    }
+    if (!inputHeaderRange) {
+      throw new Error("入力欄ヘッダー範囲が見つかりません。");
+    }
+
+    const templateSheet = this.spreadSheet.getSheetByName(TEMPLATE_SHEET_NAME);
+    if (!templateSheet) {
+      throw new Error("テンプレートシートが見つかりません。");
+    }
+
+    const templateSheetDateRange = templateSheet.getRange(dateRange);
+    const templateSheetDateValues = templateSheetDateRange.getValues().flat().filter(date => date !== '');
+
+    const dateColumnMaps: DateColumnMap[] = [];
+    const startColumn = templateSheetDateRange.getColumn();
+    for (const [index, date] of templateSheetDateValues.entries()) {
+      dateColumnMaps.push({ date: formatDate(date), column: startColumn + index });
+    }
+
+    const templateSheetInputHeaderRange = templateSheet.getRange(inputHeaderRange);
+    const templateSheetInputHeaderValues = templateSheetInputHeaderRange.getValues().flat();
+
+    const inputItemRowMaps: InputItemRowMap[] = [];
+    const startRow = templateSheetInputHeaderRange.getRow();
+    for (const [index, itemName] of templateSheetInputHeaderValues.entries()) {
+      inputItemRowMaps.push({ itemName, row: startRow + index });
+    }
+
+    this.dateColumnMaps = dateColumnMaps;
+    this.inputItemRowMaps = inputItemRowMaps;
   }
 
   getConfigYear(): number | null {
@@ -176,6 +234,41 @@ export class UserRecord{
     }
     configStoreRange.setValue(store);
     this.store = store;
+  }
+
+  public setValue(userNumber: string, date: Date, itemName: InputItemName, value: string) {    
+    const inputCellRange = this.getInputCellRange(userNumber, date, itemName);
+    inputCellRange.setValue(value);
+  }
+
+  private getInputCellRange(userNumber: string, date: Date, itemName: InputItemName): GoogleAppsScript.Spreadsheet.Range {
+    const userSheet = this.getUserSheet(userNumber);
+    const dateColumnMap = this.dateColumnMaps.find(dateColumnMap => dateColumnMap.date === formatDate(date));
+    const inputItemRowMap = this.inputItemRowMaps.find(inputItemRowMap => inputItemRowMap.itemName === itemName);
+
+    if (!dateColumnMap) {
+      throw new Error(`日付${date}が見つかりません。`);
+    }
+    if (!inputItemRowMap) {
+      throw new Error(`入力項目${itemName}が見つかりません。`);
+    }
+
+    return userSheet.sheet.getRange(inputItemRowMap.row,dateColumnMap.column);
+  }
+
+  private getUserSheet(userNumber: string): UserRecordSheet {
+    const userNumberGidMaps = this.getUserNumberGidMaps();
+
+    const userNumberGidMap = userNumberGidMaps.find(userNumberGidMap => userNumberGidMap.userNumber === userNumber);
+    if (!userNumberGidMap) {
+      throw new Error(`利用者番号${userNumber}に対応するgidが見つかりません。`);
+    }
+
+    const userSheet = this.spreadSheet.getSheetById(userNumberGidMap.gid);
+    if (!userSheet) {
+      throw new Error(`利用者番号${userNumber}に対応するシートが見つかりません。`);
+    }
+    return new UserRecordSheet(userSheet);
   }
 
   /**
