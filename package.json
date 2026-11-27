@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "common-data-access-tsubaki-type-a": "github:megumiru-developer1/common-data-access-tsubaki-type-a#v1.0.2",
-    "ws-framework": "github:megumiru-developer1/ws-framework#v9.1.5"
+    "services-tsubaki-type-a": "github:megumiru-developer1/services-tsubaki-type-a#v1.0.0",
+    "ws-framework": "github:megumiru-developer1/ws-framework#v9.1.6"
   }
 }
