@@ -3,12 +3,13 @@ import { MonthlyReportDateCellUrl, MonthlyReportUserSheetUrl } from 'common-data
 import { Config } from "./Config";
 import { UserRecord, UserRecordSheetName } from 'services-tsubaki-type-a';
 
+// version 1.0.0
+
 const INPUTTED_USER_NO_RANGE_NAME = "利用者シート作成_利用者番号";
 const INPUTTED_USER_NAME_RANGE_NAME = "利用者シート作成_氏名";
 
 //プロセスを終了させるか判断するための時間
 const TIMEOUT_SECOND = 5 * 60;
-
 
 // 利用者シート作成 ⇒「作成」ボタンを押した時の処理
 global.clickCreateBtnHandler = function(){
